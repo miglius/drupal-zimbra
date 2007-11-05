@@ -2,4 +2,3 @@
 name = zimbra
 description = "Implements Zimbra e-mail accounts provisioning."
 package = Administration
-dependencies = 

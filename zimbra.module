@@ -25,11 +25,11 @@ function zimbra_help($section) {
   $output = '';
 
   switch ($section) {
-    case 'admin/modules#zimbra':
-      $output = 'zimbra';
+    case 'admin/modules#Zimbra':
+      $output = 'Zimbra';
       break;
     case 'admin/modules#description':
-    case 'admin/help#zimbra':
+    case 'admin/help#Zimbra':
       $output = t('Implements Zimbra e-mail accounts provisioning.');
       break;
   }
@@ -45,15 +45,30 @@ function zimbra_menu($may_cache) {
   $items = array();
 
   if ($may_cache) {
-    $items[] = array('path' => 'admin/zimbra', 'title' => t('zimbra'),
-      'callback' => 'zimbra_admin', 'access' => $access_administer, 'weight' => 0);
+    $items[] = array(
+      'path' => 'admin/settings/zimbra',
+      'title' => t('zimbra'),
+      'callback' => 'drupal_get_form',
+      'callback arguments' => 'zimbra_settings',
+      'access' => $access_administer,
+      'description' => t('Configure Zimbra Provisioning settings'),
+      'type' => MENU_NORMAL_ITEM,
+    );
+    $items[] = array(
+      'path' => 'admin/zimbra',
+      'title' => t('Zimbra'),
+      'callback' => 'drupal_get_form',
+      'callback arguments' => 'zimbra_admin', 
+      'access' => $access_administer, 
+      'weight' => 0
+    );
   }
 
   return $items;
 }
 
 /** 
- * Implementation of hook_settings().
+ * Zimbra settings.
  */
 function zimbra_settings() {
   $form['zimbra'] = array(
@@ -117,7 +132,7 @@ function zimbra_settings() {
     '#description' => t('Create and maintain users\'s drupal passwords in Zimbra.'),
   );
  
-  return $form;
+  return system_settings_form($form);
 }
 
 /**
@@ -125,61 +140,61 @@ function zimbra_settings() {
  */
 function zimbra_user($op, &$edit, &$user, $category = NULL) {
   if (variable_get('zimbra_enabled', false)) {
-    switch($op) {
+    switch ($op) {
       case 'insert':
         $zimbra = new ZimbraSoapClient(variable_get('zimbra_soap_url', ''));
-	if (zimbra_login($zimbra)) {
-	  $pass = (variable_get('zimbra_user_pass', true)) ? $edit['pass'] : ZIMBRA_DEFAULT_USER_PASS;
-	  if (zimbra_create($zimbra, $edit['name'], $pass)) {
+        if (zimbra_login($zimbra)) {
+          $pass = (variable_get('zimbra_user_pass', true)) ? $edit['pass'] : ZIMBRA_DEFAULT_USER_PASS;
+          if (zimbra_create($zimbra, $edit['name'], $pass)) {
             $success = true;
-	  }
+          }
         }
         if (!$success) {
-          watchdog('zimbra', t('A new zimbra e-mail account for %user was not created.', array('%user' => theme('placeholder', $edit['name']))), WATCHDOG_ERROR);
-          drupal_set_message(t('A new zimbra e-mail account for %user was not created. Please contact site administrator.', array('%user' => theme('placeholder', $edit['name']))), 'error');
+          watchdog('zimbra', t('A new zimbra e-mail account for %user was not created.', array('%user' => $edit['name'])), WATCHDOG_ERROR);
+          drupal_set_message(t('A new zimbra e-mail account for %user was not created. Please contact site administrator.', array('%user' => $edit['name'])), 'error');
         }
         break;
       case 'delete':
         $zimbra = new ZimbraSoapClient(variable_get('zimbra_soap_url', ''));
-	if (zimbra_login($zimbra)) {
-	  if ($id = zimbra_get_id($zimbra, $user->name)) {
-	    if (zimbra_delete($zimbra, $id, $user->name)) {
+        if (zimbra_login($zimbra)) {
+          if ($id = zimbra_get_id($zimbra, $user->name)) {
+            if (zimbra_delete($zimbra, $id, $user->name)) {
               $success = true;
             }
           }
         }
         if (!$success) {
-          watchdog('zimbra', t('Zimbra e-mail account for %user was not deleted.', array('%user' => theme('placeholder', $user->name))), WATCHDOG_ERROR);
-          drupal_set_message(t('Zimbra e-mail account for %user was not deleted. Please contact site administrator.', array('%user' => theme('placeholder', $user->name))), 'error');
+          watchdog('zimbra', t('Zimbra e-mail account for %user was not deleted.', array('%user' => $user->name)), WATCHDOG_ERROR);
+          drupal_set_message(t('Zimbra e-mail account for %user was not deleted. Please contact site administrator.', array('%user' => $user->name)), 'error');
         }
         break;
       case 'submit':
-        if(isset($edit['name']) && $user->name != $edit['name'] && $user->uid > 1) {
+        if (isset($edit['name']) && $user->name != $edit['name'] && $user->uid > 1) {
           $zimbra = new ZimbraSoapClient(variable_get('zimbra_soap_url', ''));
-	  if (zimbra_login($zimbra)) {
-	    if ($id = zimbra_get_id($zimbra, $user->name)) {
-	      if (zimbra_rename($zimbra, $id, $user->name, $edit['name'])) {
+          if (zimbra_login($zimbra)) {
+            if ($id = zimbra_get_id($zimbra, $user->name)) {
+              if (zimbra_rename($zimbra, $id, $user->name, $edit['name'])) {
                 $success = true;
               }
             }
           }
           if (!$success) {
-            watchdog('zimbra', t('Zimbra e-mail account for %user was not renamed.', array('%user' => theme('placeholder', $user->name))), WATCHDOG_ERROR);
-            drupal_set_message(t('Zimbra e-mail account for %user was not renamed. Please contact site administrator.', array('%user' => theme('placeholder', $user->name))), 'error');
+            watchdog('zimbra', t('Zimbra e-mail account for %user was not renamed.', array('%user' => $user->name)), WATCHDOG_ERROR);
+            drupal_set_message(t('Zimbra e-mail account for %user was not renamed. Please contact site administrator.', array('%user' => $user->name)), 'error');
           }
         }
-        if(variable_get('zimbra_user_pass', true) && !empty($edit['pass']) && $user->uid > 1) {
+        if (variable_get('zimbra_user_pass', true) && !empty($edit['pass']) && $user->uid > 1) {
           $zimbra = new ZimbraSoapClient(variable_get('zimbra_soap_url', ''));
-	  if (zimbra_login($zimbra)) {
-	    if ($id = zimbra_get_id($zimbra, $user->name)) {
-	      if (zimbra_set_pass($zimbra, $id, $user->name, $edit['pass'])) {
+          if (zimbra_login($zimbra)) {
+            if ($id = zimbra_get_id($zimbra, $user->name)) {
+              if (zimbra_set_pass($zimbra, $id, $user->name, $edit['pass'])) {
                 $success = true;
               }
             }
           }
           if (!$success) {
-            watchdog('zimbra', t('Zimbra e-mail account password for %user was not set.', array('%user' => theme('placeholder', $user->name))), WATCHDOG_ERROR);
-            drupal_set_message(t('Zimbra e-mail account password for %user was not set. Please contact site administrator.', array('%user' => theme('placeholder', $user->name))), 'error');
+            watchdog('zimbra', t('Zimbra e-mail account password for %user was not set.', array('%user' => $user->name)), WATCHDOG_ERROR);
+            drupal_set_message(t('Zimbra e-mail account password for %user was not set. Please contact site administrator.', array('%user' => $user->name)), 'error');
           }
         }
         break;
@@ -195,11 +210,11 @@ function zimbra_user($op, &$edit, &$user, $category = NULL) {
  */
 function zimbra_login(&$zimbra) {
   $res = $zimbra->login(variable_get('zimbra_name', ''), variable_get('zimbra_pass', ''));
-  if(!is_object($res)) {
+  if (!is_object($res)) {
     return true;
   }
   else {
-    watchdog('zimbra', t('Can not login to zimbra via soap: %err.', array('%err' => theme('placeholder', $res))), WATCHDOG_ERROR);
+    watchdog('zimbra', t('Can not login to zimbra via soap: %err.', array('%err' => $res->message)), WATCHDOG_ERROR);
     return false;
   }
 }
@@ -209,12 +224,12 @@ function zimbra_login(&$zimbra) {
  */
 function zimbra_create(&$zimbra, $name, $pass) {
   $res = $zimbra->execute('CreateAccountRequest', array('name' => array('value' => $name .'@'. variable_get('zimbra_domain', ''), 'attr' => array()), 'password' => array('value' => $pass, 'attr' => array())));
-  if(!is_object($res)) {
-    watchdog('zimbra', t('A new zimbra e-mail account was created for %user.', array('%user' => theme('placeholder', $name))), WATCHDOG_NOTICE);
+  if (!is_object($res)) {
+    watchdog('zimbra', t('A new zimbra e-mail account was created for %user.', array('%user' => $name)), WATCHDOG_NOTICE);
     return true;
   }
   else {
-    watchdog('zimbra', t('A new zimbra account for %user was not created: %err.', array('%user' => theme('placeholder', $name), '%err' => theme('placeholder', $res->message))), WATCHDOG_ERROR);
+    watchdog('zimbra', t('A new zimbra account for %user was not created: %err.', array('%user' => $name, '%err' => $res->message)), WATCHDOG_ERROR);
     return false;
   }
 }
@@ -224,12 +239,12 @@ function zimbra_create(&$zimbra, $name, $pass) {
  */
 function zimbra_get_id(&$zimbra, $name) {
   $res = $zimbra->execute('GetAccountInfoRequest', array('account' => array('value' => $name .'@'. variable_get('zimbra_domain', ''), 'attr' => array('by' => 'name'))));
-  if(!is_object($res)) {
+  if (!is_object($res)) {
     $id = $res['a'][0];
     return $id; 
   }
   else {
-    watchdog('zimbra', t('Zimbra account information for %user is not available: %err.', array('%user' => theme('placeholder', $name), '%err' => theme('placeholder', $res->message))), WATCHDOG_ERROR);
+    watchdog('zimbra', t('Zimbra account information for %user is not available: %err.', array('%user' => $name, '%err' => $res->message)), WATCHDOG_ERROR);
     return false;
   }
 }
@@ -239,12 +254,12 @@ function zimbra_get_id(&$zimbra, $name) {
  */
 function zimbra_delete(&$zimbra, $id, $name) {
   $res = $zimbra->execute('DeleteAccountRequest', array('id' => array('value' => $id, 'attr' => array())));
-  if(!is_object($res)) {
-    watchdog('zimbra', t('Zimbra account user %user was deleted.', array('%user' => theme('placeholder', $name))), WATCHDOG_NOTICE);
+  if (!is_object($res)) {
+    watchdog('zimbra', t('Zimbra account user %user was deleted.', array('%user' => $name)), WATCHDOG_NOTICE);
     return true;
   }
   else {
-    watchdog('zimbra', t('Zimbra account user %user was not deleted: %err.', array('%user' => theme('placeholder', $name), '%err' => theme('placeholder', $res->message))), WATCHDOG_ERROR);
+    watchdog('zimbra', t('Zimbra account user %user was not deleted: %err.', array('%user' => $name, '%err' => $res->message)), WATCHDOG_ERROR);
     return false;
   }
 }
@@ -254,12 +269,12 @@ function zimbra_delete(&$zimbra, $id, $name) {
  */
 function zimbra_rename(&$zimbra, $id, $name, $name_new) {
   $res = $zimbra->execute('RenameAccountRequest', array('id' => array('value' => $id, 'attr' => array()), 'newName' => array('value' => $name_new .'@'. variable_get('zimbra_domain', ''), 'attr' => array())));
-  if(!is_object($res)) {
-    watchdog('zimbra', t('Zimbra account user %user was renamed to %user_new.', array('%user' => theme('placeholder', $name), '%user_new' => theme('placeholder', $name_new))), WATCHDOG_NOTICE);
+  if (!is_object($res)) {
+    watchdog('zimbra', t('Zimbra account user %user was renamed to %user_new.', array('%user' => $name, '%user_new' => $name_new)), WATCHDOG_NOTICE);
     return true;
   }
   else {
-    watchdog('zimbra', t('Zimbra account user %user was not renamed: %err.', array('%user' => theme('placeholder', $name), '%err' => theme('placeholder', $res->message))), WATCHDOG_ERROR);
+    watchdog('zimbra', t('Zimbra account user %user was not renamed: %err.', array('%user' => $name, '%err' => $res->message)), WATCHDOG_ERROR);
     return false;
   }
 }
@@ -269,12 +284,12 @@ function zimbra_rename(&$zimbra, $id, $name, $name_new) {
  */
 function zimbra_set_pass(&$zimbra, $id, $name, $pass) {
   $res = $zimbra->execute('SetPasswordRequest', array('id' => array('value' => $id, 'attr' => array()), 'newPassword' => array('value' => $pass, 'attr' => array())));
-  if(!is_object($res)) {
-    watchdog('zimbra', t('Zimbra password for user %user was set.', array('%user' => theme('placeholder', $name))), WATCHDOG_NOTICE);
+  if (!is_object($res)) {
+    watchdog('zimbra', t('Zimbra password for user %user was set.', array('%user' => $name)), WATCHDOG_NOTICE);
     return true;
   }
   else {
-    watchdog('zimbra', t('Zimbra account password for user %user was not set: %err.', array('%user' => theme('placeholder', $name), '%err' => theme('placeholder', $res->message))), WATCHDOG_ERROR);
+    watchdog('zimbra', t('Zimbra account password for user %user was not set: %err.', array('%user' => $name, '%err' => $res->message)), WATCHDOG_ERROR);
     return false;
   }
 }
@@ -297,25 +312,24 @@ function zimbra_admin() {
     '#type' => 'submit',
     '#value' => t('Create'),
   );
-  $page .= drupal_get_form('zimbra_create_accounts', $form);
 
-  return $page;
+  return $form;
 }
 
 /**
  * Zimbra admin form submit.
  */
-function zimbra_create_accounts_submit($form_id, $edit) {
+function zimbra_admin_submit($form_id, $edit) {
   $zimbra = new ZimbraSoapClient(variable_get('zimbra_soap_url', ''));
   if (zimbra_login($zimbra)) {
     $pass = ZIMBRA_DEFAULT_USER_PASS;
     $res = db_query("SELECT * FROM {users} WHERE uid > 1");
     while ($row = db_fetch_object($res)) {
       if (zimbra_create($zimbra, $row->name, $pass)) {
-        drupal_set_message(t('A new zimbra e-mail account for %user was created.', array('%user' => theme('placeholder', $row->name))));
+        drupal_set_message(t('A new zimbra e-mail account for %user was created.', array('%user' => $row->name)));
       }
       else {
-        drupal_set_message(t('A new zimbra e-mail account for %user was not created.', array('%user' => theme('placeholder', $row->name))), 'error');
+        drupal_set_message(t('A new zimbra e-mail account for %user was not created.', array('%user' => $row->name)), 'error');
       }
     }
   }
@@ -323,5 +337,3 @@ function zimbra_create_accounts_submit($form_id, $edit) {
     drupal_set_message(t('New zimbra e-mail accounts were not created.'), 'error');
   }
 }
-
-?>
