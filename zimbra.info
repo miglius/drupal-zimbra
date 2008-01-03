@@ -1,4 +1,4 @@
 ; $Id$
-name = zimbra
+name = Zimbra
 description = "Implements Zimbra e-mail accounts provisioning."
 package = Administration

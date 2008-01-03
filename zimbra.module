@@ -25,10 +25,6 @@ function zimbra_help($section) {
   $output = '';
 
   switch ($section) {
-    case 'admin/modules#Zimbra':
-      $output = 'Zimbra';
-      break;
-    case 'admin/modules#description':
     case 'admin/help#Zimbra':
       $output = t('Implements Zimbra e-mail accounts provisioning.');
       break;
@@ -47,19 +43,20 @@ function zimbra_menu($may_cache) {
   if ($may_cache) {
     $items[] = array(
       'path' => 'admin/settings/zimbra',
-      'title' => t('zimbra'),
+      'title' => t('Zimbra'),
       'callback' => 'drupal_get_form',
       'callback arguments' => 'zimbra_settings',
       'access' => $access_administer,
-      'description' => t('Configure Zimbra Provisioning settings'),
+      'description' => t('Configure Zimbra Provisioning settings.'),
       'type' => MENU_NORMAL_ITEM,
     );
     $items[] = array(
-      'path' => 'admin/zimbra',
+      'path' => 'admin/user/zimbra',
       'title' => t('Zimbra'),
       'callback' => 'drupal_get_form',
       'callback arguments' => 'zimbra_admin', 
       'access' => $access_administer, 
+      'description' => t('Create Zimbra e-mail accounts for all existing users.'),
       'weight' => 0
     );
   }
@@ -303,8 +300,8 @@ function zimbra_set_pass(&$zimbra, $id, $name, $pass) {
 function zimbra_admin() {
   $form['zimbra'] = array(
     '#type' => 'fieldset',
-    '#title' => t('zimbra'),
-    '#description' => t('Create Zimbra e-mail accounts for all existing users'),
+    '#title' => t('Zimbra'),
+    '#description' => t('Create Zimbra e-mail accounts for all existing users.'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
