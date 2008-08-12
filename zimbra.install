@@ -1,0 +1,37 @@
+<?php
+// $Id$
+/**
+ * @file
+ * Zimbra module installation and upgrade code.
+ */
+
+//////////////////////////////////////////////////////////////////////////////
+// Core API hooks
+
+/**
+ * Implementation of hook_enable().
+ */
+function zimbra_enable() {
+  drupal_set_message(t('Zimbra module successfully installed. Please review the available <a href="@settings">configuration settings</a>.', array('@settings' => url('admin/settings/zimbra'))));
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function zimbra_install() {
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function zimbra_uninstall() {
+
+  variable_del('zimbra_enabled');
+  variable_del('zimbra_soap_url');
+  variable_del('zimbra_domain');
+  variable_del('zimbra_name');
+  variable_del('zimbra_pass');
+  variable_del('zimbra_pass_clear');
+  variable_del('zimbra_user_pass');
+}
+

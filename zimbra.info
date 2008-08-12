@@ -1,4 +1,7 @@
 ; $Id$
 name = Zimbra
 description = "Implements Zimbra e-mail accounts provisioning."
-package = Administration
+package = Other
+core = 6.x
+php = 5.2
+
