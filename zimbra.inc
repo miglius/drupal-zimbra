@@ -58,8 +58,10 @@ class ZimbraSoapClient {
     $this->client->addHeader($this->header);
     $res = $this->client->call('{'. $this->namespace .'}'. $command, $params, $this->options);
     if (PEAR::isError($res)) {
-      watchdog('zimbra', 'Execution of the command %command on the zimbra server %url failed with the error: %error.', array('%command' => $command, '%url' => $this->url, '%error' => $res->getMessage()), WATCHDOG_ERROR);
-      return FALSE;
+      $notice_strings = _zimbra_notice_strings();
+      $severity = (array_key_exists($command, $notice_strings) && preg_match($notice_strings[$command], $res->getMessage())) ? WATCHDOG_NOTICE : WATCHDOG_ERROR;
+      watchdog('zimbra', 'Execution of the command %command on the zimbra server %url failed with the error: %error.', array('%command' => $command, '%url' => $this->url, '%error' => $res->getMessage()), $severity);
+      return $severity == WATCHDOG_ERROR ? FALSE : 0;;
     }
     else {
       return $res ? $res : TRUE;

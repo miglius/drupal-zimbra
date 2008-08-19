@@ -66,20 +66,20 @@ function zimbra_user($op, &$edit, &$account, $category = NULL) {
     switch ($op) {
       case 'insert':
         $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
-        if (zimbra_login($zimbra) && zimbra_create($zimbra, $edit['name'], ZIMBRA_USER_PASS ? $edit['pass'] : user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH))) {
+        if (zimbra_login($zimbra) && ($result = zimbra_create($zimbra, $edit['name'], ZIMBRA_USER_PASS ? $edit['pass'] : user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH)))) {
           watchdog('zimbra', 'A new zimbra account was created for %name.', array('%name' => $edit['name']));
         }
-        else {
+        else if ($result === FALSE) {
           watchdog('zimbra', 'A new zimbra account for %name was not created.', array('%name' => $edit['name']), WATCHDOG_ERROR);
           drupal_set_message(t('A new zimbra e-mail account for %name was not created. Please contact site administrator.', array('%name' => $edit['name'])), 'error');
         }
         break;
       case 'delete':
         $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
-        if (zimbra_login($zimbra) && ($id = zimbra_get_id($zimbra, $account->name)) && zimbra_delete($zimbra, $id, $account->name)) {
+        if (zimbra_login($zimbra) && ($id = zimbra_get_id($zimbra, $account->name)) && ($result = zimbra_delete($zimbra, $id, $account->name))) {
           watchdog('zimbra', 'Zimbra account for %name was deleted.', array('%name' => $account->name));
         }
-        else {
+        else if ($result === FALSE) {
           watchdog('zimbra', 'Zimbra account for %name was not deleted.', array('%name' => $account->name), WATCHDOG_ERROR);
           drupal_set_message(t('Zimbra e-mail account for %name was not deleted. Please contact site administrator.', array('%name' => $account->name)), 'error');
         }
@@ -87,20 +87,20 @@ function zimbra_user($op, &$edit, &$account, $category = NULL) {
       case 'submit':
         if (isset($edit['name']) && $account->name != $edit['name'] && $account->uid > 1) {
           $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
-          if (zimbra_login($zimbra) && ($id = zimbra_get_id($zimbra, $account->name)) && zimbra_rename($zimbra, $id, $account->name, $edit['name'])) {
+          if (zimbra_login($zimbra) && ($id = zimbra_get_id($zimbra, $account->name)) && ($result = zimbra_rename($zimbra, $id, $account->name, $edit['name']))) {
             watchdog('zimbra', 'Zimbra account for %name was renamed to %name_new.', array('%name' => $account->name, '%name_new' => $edit['name']));
           }
-          else {
+          else if ($result === FALSE) {
             watchdog('zimbra', 'Zimbra account for %name was not renamed to %name_new.', array('%name' => $account->name, '%name_new' => $edit['name']), WATCHDOG_ERROR);
             drupal_set_message(t('Zimbra e-mail account for %name was not renamed to %name_new. Please contact site administrator.', array('%name' => $account->name, '%name_new' => $edit['name'])), 'error');
           }
         }
         if (ZIMBRA_USER_PASS && !empty($edit['pass']) && $account->uid > 1) {
           $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
-          if (zimbra_login($zimbra) && ($id = zimbra_get_id($zimbra, $account->name)) && zimbra_set_pass($zimbra, $id, $account->name, $edit['pass'])) {
+          if (zimbra_login($zimbra) && ($id = zimbra_get_id($zimbra, $account->name)) && ($result = zimbra_set_pass($zimbra, $id, $account->name, $edit['pass']))) {
             watchdog('zimbra', 'Zimbra account password for %name was set.', array('%name' => $account->name));
           }
-          else {
+          else if ($result === FALSE) {
             watchdog('zimbra', 'Zimbra account password for %name was not set.', array('%name' => $account->name), WATCHDOG_ERROR);
             drupal_set_message(t('Zimbra e-mail account password for %name was not set. Please contact site administrator.', array('%name' => $account->name)), 'error');
           }
@@ -141,11 +141,11 @@ function zimbra_admin_submit($form, &$form_state) {
     $result = db_query("SELECT * FROM {users} WHERE uid > 1");
     while ($row = db_fetch_object($result)) {
       $pass = user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH);
-      if (zimbra_create($zimbra, $row->name, $pass)) {
+      if ($result = zimbra_create($zimbra, $row->name, $pass)) {
         watchdog('zimbra', 'A new zimbra account was created for %name.', array('%name' => $row->name));
         drupal_set_message(t('A new zimbra e-mail account for %name was created.', array('%name' => $row->name)));
       }
-      else {
+      else if ($result === FALSE) {
         watchdog('zimbra', 'A new zimbra account for %name was not created.', array('%name' => $row->name), WATCHDOG_ERROR);
       }
     }
@@ -206,5 +206,16 @@ function zimbra_rename(&$zimbra, $id, $name, $name_new) {
  */
 function zimbra_set_pass(&$zimbra, $id, $name, $pass) {
   return $zimbra->execute('SetPasswordRequest', array('id' => array('value' => $id), 'newPassword' => array('value' => $pass)));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Auxiliary functions
+
+/**
+ * This function returns array of zimbra functions and error matching strings.
+ * If string is matched, notice is logged instead of the error.
+ */
+function _zimbra_notice_strings() {
+  return array('CreateAccountRequest' => '/^email address already exists: /');
 }
 
