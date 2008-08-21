@@ -95,7 +95,7 @@ function zimbra_admin_settings_validate($form, &$form_state) {
   $values = $form_state['values'];
   $op = $form_state['clicked_button']['#value'];
   switch ($op) {
-    case "Save configuration":
+    case t('Save configuration'):
       if ($values['zimbra_enabled']) {
         if (empty($values['zimbra_soap_url']))
           form_set_error('zimbra_soap_url', t('A Zimbra SOAP interface URL cannot be empty.'));
@@ -117,7 +117,7 @@ function zimbra_admin_settings_submit($form, &$form_state) {
   $values = $form_state['values'];
   $op = $form_state['clicked_button']['#value'];
   switch ($op) {
-    case "Save configuration":
+    case t('Save configuration'):
       variable_set('zimbra_enabled', $values['zimbra_enabled']);
       variable_set('zimbra_soap_url', $values['zimbra_soap_url']);
       variable_set('zimbra_domain', $values['zimbra_domain']);
@@ -131,7 +131,7 @@ function zimbra_admin_settings_submit($form, &$form_state) {
       variable_set('zimbra_user_pass', $values['zimbra_user_pass']);
       drupal_set_message(t('The configuration options have been saved.'));
       break;
-    case "Reset to defaults":
+    case ('Reset to defaults'):
       variable_del('zimbra_enabled');
       variable_del('zimbra_soap_url');
       variable_del('zimbra_domain');
