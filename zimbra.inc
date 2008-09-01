@@ -25,7 +25,7 @@ class ZimbraSoapClient {
     $this->url = $url;
     $this->namespace = 'urn:zimbraAdmin';
     $this->context = '{urn:zimbra}context';
-    $this->options = array('namespace' => $this->namespace, 'trace' => 1);
+    $this->options = array('namespace' => $this->namespace, 'trace' => 1, 'timeout' => ZIMBRA_TIMEOUT);
 
     $this->client = new SOAP_Client($this->url);
     if (preg_match('/^https/', $url)) {

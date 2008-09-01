@@ -69,6 +69,14 @@ function zimbra_admin_settings() {
       '#default_value' => FALSE,
     );
   }
+  $form['zimbra']['zimbra_timeout'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Timeout'),
+    '#default_value' => ZIMBRA_TIMEOUT,
+    '#size' => 4,
+    '#maxlength' => 4,
+    '#description' => t('Timeout for connection to Zimbra server in seconds. Zero means no timeout set.'),
+  );
   $form['zimbra']['zimbra_user_pass'] = array(
     '#type' => 'checkbox',
     '#title' => t('User passwords.'),
@@ -105,6 +113,8 @@ function zimbra_admin_settings_validate($form, &$form_state) {
           form_set_error('zimbra_name', t('An adminisration user name cannot be empty.'));
         if (array_key_exists('zimbra_pass', $values) && empty($values['zimbra_pass']))
           form_set_error('zimbra_pass', t('An adminisration password cannot be empty.'));
+        if (!is_numeric($values['zimbra_timeout']))
+          form_set_error('zimbra_timeout', t('A timeout should be numeric.'));
       }
       break;
   }
@@ -128,16 +138,18 @@ function zimbra_admin_settings_submit($form, &$form_state) {
       if ($values['zimbra_pass_clear'] == 1) {
         variable_set('zimbra_pass', '');
       }
+      variable_set('zimbra_timeout', $values['zimbra_timeout']);
       variable_set('zimbra_user_pass', $values['zimbra_user_pass']);
       drupal_set_message(t('The configuration options have been saved.'));
       break;
-    case ('Reset to defaults'):
+    case t('Reset to defaults'):
       variable_del('zimbra_enabled');
       variable_del('zimbra_soap_url');
       variable_del('zimbra_domain');
       variable_del('zimbra_name');
       variable_del('zimbra_pass');
       variable_del('zimbra_pass_clear');
+      variable_del('zimbra_user_timeout');
       variable_del('zimbra_user_pass');
       drupal_set_message(t('The configuration options have been reset to their default values.'));
       break;

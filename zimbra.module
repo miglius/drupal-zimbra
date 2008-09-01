@@ -13,6 +13,7 @@ define('ZIMBRA_DOMAIN',     variable_get('zimbra_domain', ''));
 define('ZIMBRA_NAME',       variable_get('zimbra_name', ''));
 define('ZIMBRA_PASS',       variable_get('zimbra_pass', ''));
 define('ZIMBRA_PASS_CLEAR', variable_get('zimbra_pass_clear', 0));
+define('ZIMBRA_TIMEOUT',    variable_get('zimbra_timeout', 10));
 define('ZIMBRA_USER_PASS',  variable_get('zimbra_user_pass', TRUE));
 
 define('ZIMBRA_DEFAULT_USER_PASS_STRENGTH', 12);
