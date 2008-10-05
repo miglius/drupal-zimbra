@@ -53,7 +53,7 @@ class ZimbraSoapClient {
   function execute($command, $param = array()) {
     $params = array();
     foreach ($param as $k => $v) {
-      $params[] = new SOAP_Value($k, '', $v['value'], $v['attr']);
+      $params[] = new SOAP_Value($k, '', $v['value'], isset($v['attr']) ? $v['attr'] : NULL);
     }
     $this->client->addHeader($this->header);
     $res = $this->client->call('{'. $this->namespace .'}'. $command, $params, $this->options);

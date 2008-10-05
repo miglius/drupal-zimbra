@@ -81,7 +81,7 @@ function zimbra_admin_settings() {
     '#type' => 'checkbox',
     '#title' => t('User passwords.'),
     '#default_value' => ZIMBRA_USER_PASS,
-    '#description' => t('Create and maintain users\'s drupal passwords in Zimbra.'),
+    '#description' => t('Create and maintain users\' drupal passwords in Zimbra.'),
   );
 
   $form['submit'] = array(
@@ -135,7 +135,7 @@ function zimbra_admin_settings_submit($form, &$form_state) {
       if (!empty($values['zimbra_pass'])) {
         variable_set('zimbra_pass', $values['zimbra_pass']);
       }
-      if ($values['zimbra_pass_clear'] == 1) {
+      if (isset($values['zimbra_pass_clear']) && $values['zimbra_pass_clear'] == 1) {
         variable_set('zimbra_pass', '');
       }
       variable_set('zimbra_timeout', $values['zimbra_timeout']);
