@@ -23,7 +23,7 @@ function zimbra_admin_settings() {
   );
   $form['zimbra']['zimbra_enabled'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Enable Zimbra e-mail account provisioning.'),
+    '#title' => t('Enable Zimbra e-mail account provisioning'),
     '#default_value' => ZIMBRA_ENABLED,
   );
   $form['zimbra']['zimbra_soap_url'] = array(
@@ -65,7 +65,7 @@ function zimbra_admin_settings() {
   else {
     $form['zimbra']['zimbra_pass_clear'] = array(
       '#type' => 'checkbox',
-      '#title' => t('Clear current administration password.'),
+      '#title' => t('Clear current administration password'),
       '#default_value' => FALSE,
     );
   }
@@ -79,9 +79,34 @@ function zimbra_admin_settings() {
   );
   $form['zimbra']['zimbra_user_pass'] = array(
     '#type' => 'checkbox',
-    '#title' => t('User passwords.'),
+    '#title' => t('User passwords'),
     '#default_value' => ZIMBRA_USER_PASS,
     '#description' => t('Create and maintain users\' drupal passwords in Zimbra.'),
+  );
+
+  $form['suspension'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Zimbra account suspension'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE
+  );
+  $form['suspension']['zimbra_suspension_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Suspend zimbra account when a drupal account is blocked'),
+    '#default_value' => ZIMBRA_SUSPENSION_ENABLED,
+  );
+  $status_options = array(
+    ZIMBRA_STATUS_CLOSED => t('Closed'),
+    ZIMBRA_STATUS_LOCKED => t('Locked'),
+    ZIMBRA_STATUS_MAINTENANCE => t('Maintenance'),
+  );
+  $form['suspension']['zimbra_suspension_status'] = array(
+    '#type' => 'radios',
+    '#title' => t('Choose zimbra status for the blocked accounts'),
+    '#description' => t('If zimbra account suspension is enabled, pick the zimbra account status for the drupal blocked user.'),
+    '#default_value' => ZIMBRA_SUSPENSION_STATUS,
+    '#options' => $status_options,
+    '#required' => TRUE,
   );
 
   $form['submit'] = array(
@@ -140,6 +165,8 @@ function zimbra_admin_settings_submit($form, &$form_state) {
       }
       variable_set('zimbra_timeout', $values['zimbra_timeout']);
       variable_set('zimbra_user_pass', $values['zimbra_user_pass']);
+      variable_set('zimbra_suspension_enabled', $values['zimbra_suspension_enabled']);
+      variable_set('zimbra_suspension_status', $values['zimbra_suspension_status']);
       drupal_set_message(t('The configuration options have been saved.'));
       break;
     case t('Reset to defaults'):
@@ -151,6 +178,8 @@ function zimbra_admin_settings_submit($form, &$form_state) {
       variable_del('zimbra_pass_clear');
       variable_del('zimbra_user_timeout');
       variable_del('zimbra_user_pass');
+      variable_del('zimbra_suspension_enabled');
+      variable_del('zimbra_suspension_status');
       drupal_set_message(t('The configuration options have been reset to their default values.'));
       break;
   }

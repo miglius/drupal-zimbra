@@ -16,6 +16,13 @@ define('ZIMBRA_PASS_CLEAR', variable_get('zimbra_pass_clear', 0));
 define('ZIMBRA_TIMEOUT',    variable_get('zimbra_timeout', 10));
 define('ZIMBRA_USER_PASS',  variable_get('zimbra_user_pass', TRUE));
 
+define('ZIMBRA_SUSPENSION_ENABLED', variable_get('zimbra_suspension_enabled', FALSE));
+define('ZIMBRA_STATUS_ACTIVE',      'active');
+define('ZIMBRA_STATUS_CLOSED',      'closed');
+define('ZIMBRA_STATUS_LOCKED',      'locked');
+define('ZIMBRA_STATUS_MAINTENANCE', 'maintenance');
+define('ZIMBRA_SUSPENSION_STATUS',   variable_get('zimbra_suspension_status', ZIMBRA_STATUS_CLOSED));
+
 define('ZIMBRA_DEFAULT_USER_PASS_STRENGTH', 12);
 define('ZIMBRA_CURLOPT_SSL_VERIFYPEER',     FALSE);
 define('ZIMBRA_CURLOPT_SSL_VERIFYHOST',     FALSE);
@@ -104,6 +111,19 @@ function zimbra_user($op, &$edit, &$account, $category = NULL) {
           else if (!isset($result) || $result === FALSE) {
             watchdog('zimbra', 'Zimbra account password for %name was not set.', array('%name' => $account->name), WATCHDOG_ERROR);
             drupal_set_message(t('Zimbra e-mail account password for %name was not set. Please contact site administrator.', array('%name' => $account->name)), 'error');
+          }
+        }
+        break;
+      case 'update':
+        if (ZIMBRA_SUSPENSION_ENABLED && isset($edit['status']) && $edit['status'] != $account->status) {
+          $status = $edit['status'] == 1 ? ZIMBRA_STATUS_ACTIVE : ZIMBRA_SUSPENSION_STATUS;
+          $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
+          if (zimbra_login($zimbra) && ($id = zimbra_get_id($zimbra, $account->name)) && ($result = zimbra_change_status($zimbra, $id, $status))) {
+            watchdog('zimbra', 'Zimbra account status for %name has been changed to %status.', array('%name' => $account->name, '%status' => $status));
+          }
+          else if (!isset($result) || $result === FALSE) {
+            watchdog('zimbra', 'Zimbra account status for %name has not been changed to %status.', array('%name' => $account->name, '%status' => $status), WATCHDOG_ERROR);
+            drupal_set_message(t('Zimbra e-mail account status for %name has not been changed to %status. Please contact site administrator.', array('%name' => $account->name, '%status' => $status)), 'error');
           }
         }
         break;
@@ -207,6 +227,13 @@ function zimbra_rename(&$zimbra, $id, $name, $name_new) {
  */
 function zimbra_set_pass(&$zimbra, $id, $name, $pass) {
   return $zimbra->execute('SetPasswordRequest', array('id' => array('value' => $id), 'newPassword' => array('value' => $pass)));
+}
+
+/**
+ * Change zimbra status.
+ */
+function zimbra_change_status(&$zimbra, $id, $status) {
+  return $zimbra->execute('ModifyAccountRequest', array('id' => array('value' => $id), 'a' => array('value' => $status, 'attr' => array('n' => 'zimbraAccountStatus'))));;
 }
 
 //////////////////////////////////////////////////////////////////////////////
