@@ -21,6 +21,8 @@ class ZimbraSoapClient {
   var $header;
   var $client;
 
+  var $error;
+
   function ZimbraSoapClient($url) {
     $this->url = $url;
     $this->namespace = 'urn:zimbraAdmin';
@@ -61,11 +63,17 @@ class ZimbraSoapClient {
       $notice_strings = _zimbra_notice_strings();
       $severity = (array_key_exists($command, $notice_strings) && preg_match($notice_strings[$command], $res->getMessage())) ? WATCHDOG_NOTICE : WATCHDOG_ERROR;
       watchdog('zimbra', 'Execution of the command %command on the zimbra server %url failed with the error: %error.', array('%command' => $command, '%url' => $this->url, '%error' => $res->getMessage()), $severity);
-      return $severity == WATCHDOG_ERROR ? FALSE : 0;;
+      $this->error = $res->getMessage();
+      return FALSE;
     }
     else {
+      $this->error = NULL;
       return $res ? $res : TRUE;
     }
+  }
+
+  function error() {
+    return $this->error;
   }
 }
 

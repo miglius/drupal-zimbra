@@ -7,14 +7,17 @@
 
 //////////////////////////////////////////////////////////////////////////////
 
-define('ZIMBRA_ENABLED',    variable_get('zimbra_enabled', FALSE));
-define('ZIMBRA_SOAP_URL',   variable_get('zimbra_soap_url', ''));
-define('ZIMBRA_DOMAIN',     variable_get('zimbra_domain', ''));
-define('ZIMBRA_NAME',       variable_get('zimbra_name', ''));
-define('ZIMBRA_PASS',       variable_get('zimbra_pass', ''));
-define('ZIMBRA_PASS_CLEAR', variable_get('zimbra_pass_clear', 0));
-define('ZIMBRA_TIMEOUT',    variable_get('zimbra_timeout', 10));
-define('ZIMBRA_USER_PASS',  variable_get('zimbra_user_pass', TRUE));
+define('ZIMBRA_ENABLED',        variable_get('zimbra_enabled', FALSE));
+define('ZIMBRA_SOAP_URL',       variable_get('zimbra_soap_url', ''));
+define('ZIMBRA_DOMAIN',         variable_get('zimbra_domain', ''));
+define('ZIMBRA_NAME',           variable_get('zimbra_name', ''));
+define('ZIMBRA_PASS',           variable_get('zimbra_pass', ''));
+define('ZIMBRA_PASS_CLEAR',     variable_get('zimbra_pass_clear', 0));
+define('ZIMBRA_TIMEOUT',        variable_get('zimbra_timeout', 10));
+define('ZIMBRA_USER_PASS',      variable_get('zimbra_user_pass', TRUE));
+define('ZIMBRA_PROFILE',        'Zimbra e-mail account');
+define('ZIMBRA_PROFILE_WEIGHT', 5);
+define('ZIMBRA_BATCH_LIMIT',    10;
 
 define('ZIMBRA_SUSPENSION_ENABLED', variable_get('zimbra_suspension_enabled', FALSE));
 define('ZIMBRA_STATUS_ACTIVE',      'active');
@@ -56,6 +59,14 @@ function zimbra_menu() {
       'access arguments' => array('administer site configuration'),
       'weight' => 1,
     ),
+    'zimbra/create/%user' => array(
+      'title' => 'Create',
+      'description' => 'Create Zimbra e-mail account.',
+      'type' => MENU_CALLBACK,
+      'page callback' => 'zimbra_create_account',
+      'page arguments' => array(2),
+      'access arguments' => array('administer users'),
+    ),
   );
 }
 
@@ -72,14 +83,25 @@ function zimbra_init() {
 function zimbra_user($op, &$edit, &$account, $category = NULL) {
   if (ZIMBRA_ENABLED) {
     switch ($op) {
+      case 'view':
+        if (user_access('administer users')) {
+          $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
+          if (zimbra_login($zimbra)) {
+            $id = zimbra_get_id($zimbra, $account->name);
+            $account->content[t(LDAPAUTH_PROFILE)] = array(
+             '#type' => 'user_profile_category',
+             '#title' => t(ZIMBRA_PROFILE),
+             '#attributes' => array('class' => 'zimbra-entry'),
+             '#weight' => ZIMBRA_PROFILE_WEIGHT,
+             'zimbra_id' => array('#type' => 'user_profile_item', '#title' => t('ID'), '#value' => $id ? $id : l(t('create'), 'zimbra/create/'. $account->uid, array('query' => drupal_get_destination())), '#weight' => 1),
+            );
+          }
+        }
+        break;
       case 'insert':
         $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
-        if (zimbra_login($zimbra) && ($result = zimbra_create($zimbra, $edit['name'], ZIMBRA_USER_PASS ? $edit['pass'] : user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH)))) {
-          watchdog('zimbra', 'A new zimbra account was created for %name.', array('%name' => $edit['name']));
-        }
-        else if (!isset($result) || $result === FALSE) {
-          watchdog('zimbra', 'A new zimbra account for %name was not created.', array('%name' => $edit['name']), WATCHDOG_ERROR);
-          drupal_set_message(t('A new zimbra e-mail account for %name was not created. Please contact site administrator.', array('%name' => $edit['name'])), 'error');
+        if (zimbra_login($zimbra)) {
+          _zimbra_create_account($zimbra, $edit['name'], ZIMBRA_USER_PASS ? $edit['pass'] : user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH));
         }
         break;
       case 'delete':
@@ -157,24 +179,98 @@ function zimbra_admin() {
  * Zimbra admin form submit.
  */
 function zimbra_admin_submit($form, &$form_state) {
+  $batch = array(
+    'operations' => array(
+      array('zimbra_account_create_batch_process', array()),
+    ),
+    'finished' => 'zimbra_account_create_batch_finished',
+    'title' => t('Processing zimbra account creation'),
+    'init_message' => t('Zimbra account creation is starting.'),
+    'progress_message' => t('Processing...'),
+    'error_message' => t('Zimbra account creation has encountered an error.'),
+  );
+  batch_set($batch);
+}
+
+/**
+ * Batch Operation Callback.
+ */
+function zimbra_account_create_batch_process(&$context) {
+  if (!isset($context['sandbox']['progress'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = db_result(db_query('SELECT COUNT(uid) FROM {users} WHERE uid > 1'));
+    $context['sandbox']['current_uid'] = 1;
+  }
+
   $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
   if (zimbra_login($zimbra)) {
-    $db_result = db_query("SELECT * FROM {users} WHERE uid > 1");
-    while ($row = db_fetch_object($db_result)) {
-      $pass = user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH);
-      if ($result = zimbra_create($zimbra, $row->name, $pass)) {
-        watchdog('zimbra', 'A new zimbra account was created for %name.', array('%name' => $row->name));
-        drupal_set_message(t('A new zimbra e-mail account for %name was created.', array('%name' => $row->name)));
+    $result = db_query_range("SELECT uid FROM {users} WHERE uid > %d ORDER BY uid ASC", $context['sandbox']['current_uid'], 0, ZIMBRA_BATCH_LIMIT);
+    while ($row = db_fetch_array($result)) {
+      $account = user_load($row['uid']);
+      $context['sandbox']['progress']++;
+      $context['sandbox']['current_uid'] = $account->uid;
+      $context['message'] = t('Inspecting %name.', array('%name' => $account->name));
+      if ($created = zimbra_create($zimbra, $account->name, user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH))) {
+        $context['results'][] = theme('username', $account);
+        watchdog('zimbra', 'A new zimbra account for %name was created.', array('%name' => $account->name), WATCHDOG_ERROR);
       }
-      else if (!isset($result) || $result === FALSE) {
-        watchdog('zimbra', 'A new zimbra account for %name was not created.', array('%name' => $row->name), WATCHDOG_ERROR);
+      else if ($created === FALSE) {
+        watchdog('zimbra', 'A new zimbra account for %name was not created.', array('%name' => $account->name), WATCHDOG_ERROR);
       }
     }
-    drupal_set_message(t('Missing zimbra e-mail accounts were created.'));
   }
   else {
-    drupal_set_message(t('New zimbra e-mail accounts were not created.'), 'error');
+    $context['sandbox']['progress'] = $context['sandbox']['max'];
+    drupal_set_message(t('Cannot login to the Zimbra server.'), 'error');
   }
+
+  if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+  }
+}
+
+/**
+ * Batch 'finished' callback.
+ */
+function zimbra_account_create_batch_finished($success, $results, $operations) {
+  if ($success) {
+    if (!empty($results)) {
+      drupal_set_message(t('Zimbra accounts were created for following users.') . theme('item_list', $results));
+    }
+    else {
+      drupal_set_message(t('No new zimbra accounts were created.'));
+    }
+  }
+  else {
+    $error_operation = reset($operations);
+    drupal_set_message(t('An error occurred while processing %error. Please contact site administrator.', array('%error' => $error_operation[0])), 'error');
+  }
+}
+
+/**
+ * Menu callback.
+ */
+function zimbra_create_account($account) {
+  $zimbra = new ZimbraSoapClient(ZIMBRA_SOAP_URL);
+  if (zimbra_login($zimbra) && _zimbra_create_account($zimbra, $account->name)) {
+    drupal_set_message(t('A new zimbra e-mail account for %name was created.', array('%name' => $name)));
+  }
+  drupal_goto();
+}
+
+/**
+ * Creates Zimbra account.
+ */
+function _zimbra_create_account(&$zimbra, $name, $pass = NULL) {
+  $pass = isset($pass) ? $pass : user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH);
+  if ($result = zimbra_create($zimbra, $name, $pass)) {
+    watchdog('zimbra', 'A new zimbra account was created for %name.', array('%name' => $name));
+  }
+  else if ($result === FALSE) {
+    watchdog('zimbra', 'A new zimbra account for %name was not created.', array('%name' => $name), WATCHDOG_ERROR);
+    drupal_set_message(t('A new zimbra e-mail account for %name was not created.', array('%name' => $name)), 'error');
+  }
+  return $result;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -189,9 +285,19 @@ function zimbra_login(&$zimbra) {
 
 /**
  * Creates zimbra account.
+ *
+ * Returns TRUE if account was created, FALSE if failed and NULL if the account already existed.
  */
 function zimbra_create(&$zimbra, $name, $pass) {
-  return $zimbra->execute('CreateAccountRequest', array('name' => array('value' => $name .'@'. ZIMBRA_DOMAIN), 'password' => array('value' => $pass)));
+  if ($result = $zimbra->execute('CreateAccountRequest', array('name' => array('value' => $name .'@'. ZIMBRA_DOMAIN), 'password' => array('value' => $pass)))) {
+    return TRUE;
+  }
+  else if (($notice_strings = _zimbra_notice_strings()) && preg_match($notice_strings['CreateAccountRequest'], $zimbra->error())) {
+    return;
+  }
+  else {
+    return FALSE;
+  }
 }
 
 /**
