@@ -83,6 +83,18 @@ function zimbra_admin_settings() {
     '#default_value' => ZIMBRA_USER_PASS,
     '#description' => t('Create and maintain users\' drupal passwords in Zimbra.'),
   );
+  $zimbra_auth_modules = array('local' => 'local');
+  $result = db_query('SELECT DISTINCT module FROM {authmap}');
+  while ($row = db_fetch_object($result)) {
+    $zimbra_auth_modules[$row->module] = $row->module;
+  }
+  $form['zimbra']['zimbra_auth_modules'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Authentication modules'),
+    '#options' => $zimbra_auth_modules,
+    '#default_value' => variable_get('zimbra_auth_modules', array('local' => 'local')),
+    '#description' => t('Create Zimbra accounts for users authenticated by the selected modules. "local" means an ordinary drupal account.'),
+  );
 
   $form['suspension'] = array(
     '#type' => 'fieldset',
@@ -165,6 +177,7 @@ function zimbra_admin_settings_submit($form, &$form_state) {
       }
       variable_set('zimbra_timeout', $values['zimbra_timeout']);
       variable_set('zimbra_user_pass', $values['zimbra_user_pass']);
+      variable_set('zimbra_auth_modules', $values['zimbra_auth_modules']);
       variable_set('zimbra_suspension_enabled', $values['zimbra_suspension_enabled']);
       variable_set('zimbra_suspension_status', $values['zimbra_suspension_status']);
       drupal_set_message(t('The configuration options have been saved.'));
@@ -178,6 +191,7 @@ function zimbra_admin_settings_submit($form, &$form_state) {
       variable_del('zimbra_pass_clear');
       variable_del('zimbra_user_timeout');
       variable_del('zimbra_user_pass');
+      variable_del('zimbra_auth_modules');
       variable_del('zimbra_suspension_enabled');
       variable_del('zimbra_suspension_status');
       drupal_set_message(t('The configuration options have been reset to their default values.'));

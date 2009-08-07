@@ -81,7 +81,7 @@ function zimbra_init() {
  * Implementation of hook_user().
  */
 function zimbra_user($op, &$edit, &$account, $category = NULL) {
-  if (ZIMBRA_ENABLED) {
+  if (ZIMBRA_ENABLED && _zimbra_user_check($account)) {
     switch ($op) {
       case 'view':
         if (user_access('administer users')) {
@@ -210,7 +210,8 @@ function zimbra_account_create_batch_process(&$context) {
       $context['sandbox']['progress']++;
       $context['sandbox']['current_uid'] = $account->uid;
       $context['message'] = t('Inspecting %name.', array('%name' => $account->name));
-      if ($created = zimbra_create($zimbra, $account->name, user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH))) {
+      unset($created);
+      if (_zimbra_user_check($account) && ($created = zimbra_create($zimbra, $account->name, user_password(ZIMBRA_DEFAULT_USER_PASS_STRENGTH)))) {
         $context['results'][] = theme('username', $account);
         watchdog('zimbra', 'A new zimbra account for %name was created.', array('%name' => $account->name), WATCHDOG_ERROR);
       }
@@ -351,5 +352,14 @@ function zimbra_change_status(&$zimbra, $id, $status) {
  */
 function _zimbra_notice_strings() {
   return array('CreateAccountRequest' => '/^email address already exists: /');
+}
+
+/**
+ * Checks if a Zimbra account should be created for this user.
+ */
+function _zimbra_user_check(&$account) {
+  $module = db_result(db_query('SELECT module FROM {authmap} WHERE uid = %d', $account->uid));
+  $module = !empty($module) ? $module : 'local';
+  return in_array($module, variable_get('zimbra_auth_modules', array('local' => 'local')), TRUE);
 }
 

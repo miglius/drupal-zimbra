@@ -34,6 +34,7 @@ function zimbra_uninstall() {
   variable_del('zimbra_pass_clear');
   variable_del('zimbra_timeout');
   variable_del('zimbra_user_pass');
+  variable_del('zimbra_auth_modules');
   variable_del('zimbra_suspension_enabled');
   variable_del('zimbra_suspension_status');
 }
