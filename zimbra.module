@@ -358,6 +358,9 @@ function _zimbra_notice_strings() {
  * Checks if a Zimbra account should be created for this user.
  */
 function _zimbra_user_check(&$account) {
+  if (!isset($account->uid))
+    return FASLE;
+
   $module = db_result(db_query('SELECT module FROM {authmap} WHERE uid = %d', $account->uid));
   $module = !empty($module) ? $module : 'local';
   return in_array($module, variable_get('zimbra_auth_modules', array('local' => 'local')), TRUE);
