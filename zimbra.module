@@ -359,7 +359,7 @@ function _zimbra_notice_strings() {
  */
 function _zimbra_user_check(&$account) {
   if (!isset($account->uid))
-    return FASLE;
+    return FALSE;
 
   $module = db_result(db_query('SELECT module FROM {authmap} WHERE uid = %d', $account->uid));
   $module = !empty($module) ? $module : 'local';
